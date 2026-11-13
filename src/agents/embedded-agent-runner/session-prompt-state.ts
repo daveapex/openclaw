@@ -25,6 +25,7 @@ import {
 } from "./cache-ttl-checkpoint.js";
 import { extractAttemptPermissionNotice } from "./run/attempt-system-prompt.js";
 import { buildSystemUpdateMessage } from "./run/runtime-context-prompt.js";
+import { resolvePromptHistoryId } from "./session-prompt-history-id.js";
 import {
   readToolSurfaceCheckpoint,
   type ToolDefinition,
@@ -132,26 +133,6 @@ type ToolSurfaceInput = {
   historyBoundaryCount?: number;
   tools: AnyAgentTool[];
 };
-
-function resolvePromptHistoryId(params: {
-  state: EmbeddedSessionPromptState;
-  entries: SessionEntry[];
-  historyBoundaryCount?: number;
-}): string | null {
-  // Bounded reloads can omit a compaction's payload without changing history.
-  // The manager's boundary count, not its visible window, invalidates this run's fact.
-  const previous = params.state.historyBoundary;
-  if (previous && previous.count === params.historyBoundaryCount) {
-    return previous.id;
-  }
-  const id =
-    params.entries.findLast((entry) => entry.type === "compaction" || entry.type === "reset")?.id ??
-    null;
-  if (params.historyBoundaryCount !== undefined) {
-    params.state.historyBoundary = { count: params.historyBoundaryCount, id };
-  }
-  return id;
-}
 
 /** The prompt owner alone decides when persisted usage may enter provider-visible text. */
 export async function prepareSessionToolUsageRanking(params: {
